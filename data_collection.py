@@ -200,10 +200,10 @@ def iter_2to5(symbols,iter_num):
                 put = list(chain['putExpDateMap'][exp_date][strike][0].values())
                 df.loc[len(df)] = put
         # create an extra column for the iteration that data was collected for 
-        iter_num = []
+        iter_nums = []
         for i in range(len(df)):
-            iter_num.append(iter_num)
-        df['iter_num'] = iter_num 
+            iter_nums.append(iter_num)
+        df['iter_num'] = iter_nums
 
         df.to_csv(f'D:\IvCrushData\Options Data\{ticker}_chain.csv')
 
@@ -215,6 +215,12 @@ def add_date_column(symbols):
         for i in range(len(df)):
             dates.append(current_date)
         df['collected_on'] = dates 
+        df.to_csv(f'D:\IvCrushData\Options Data\{ticker}_chain.csv')
+
+def get_stats(symbols):
+    for ticker in symbols:
+        stats = si.get_stats(ticker)
+        stats.to_csv(f'D:\IvCrushData\Stats\{ticker}_stats_{get_current_date()}.csv')
 
 
 # collect data at:
@@ -222,10 +228,11 @@ def add_date_column(symbols):
 # 10:20 am
 # 11:40 am
 # 1:00 pm
-# 2:25 pm
+# 2:25 pm (get stats too)
 
 
-#sleep_until('9:00')
+
+sleep_until('9:00')
 symbols = iter1()
 sleep_until('10:20')
 iter_2to5(symbols,2)
@@ -236,20 +243,7 @@ iter_2to5(symbols,4)
 sleep_until('14:25')
 iter_2to5(symbols,5)
 add_date_column(symbols)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+get_stats(symbols)
 
 
         
