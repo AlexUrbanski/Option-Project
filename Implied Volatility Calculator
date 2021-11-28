@@ -1,0 +1,41 @@
+from math import sqrt, exp, log
+from scipy.stats import norm
+def d(sigma,s,k,r,t):
+    d1 = 1/ (sigma * sqrt(t)) * (log(s/k) + (r + sigma**2/2)*t)
+    d2 = d1 - sigma * sqrt(t)
+    return d1 , d2
+def callprice(sigma,s,k,r,t,d1,d2):
+    cprice = norm.cdf(d1) * s - norm.cdf(d2) * k * exp(-r*t)
+    return cprice
+# sigma = implied volatility
+# black scholes model - call price = 0
+# we will be then be finding a value for sigma (iv) that sets equation = to 0
+s = 717.05 # stock price
+k = 710.00 # strike price
+t = 36 # DTE (Days Til Experation)
+t = t/365
+r = 0.01 # risk free interest rate (10 year treasury note yield)
+d1,d2 = d(0.15,s,k,r,t)
+c0 = 39.55 # current call price
+# tolerances
+tol = 1e-3
+epsilon = 1 # the % change of IV estimate from one iteration to the next
+count = 0
+maxiter = 1000
+vol = 0.5
+while epsilon > tol:
+    count += 1
+    if count >= maxiter:
+        print ('breaking from count')
+        break
+    origval = vol
+    d1,d2 = d(vol,s,k,r,t)
+    funcval = callprice(vol,s,k,r,t,d1,d2) - c0
+    # now get derivative (vega)
+    vega = s * norm.pdf(d1) * sqrt(t)
+    #print (vega)
+    vol = -funcval / vega + vol
+    epsilon = abs((vol-origval) / origval)
+
+print (f'sigma = {vol}')
+print (f'code took {count} iterations')
