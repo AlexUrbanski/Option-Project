@@ -1,4 +1,5 @@
 from genericpath import exists
+from requests.api import get
 import yahoo_fin.stock_info as si 
 import pandas as pd 
 from tda import auth, client 
@@ -40,7 +41,7 @@ def sleep_until(intended_time):
     hours = int(diff_arr[0])
     mins = int(diff_arr[1])
     sleep_time = (hours*60*60) + (mins*60) 
-    print ('sleeping for ',sleep_time)
+    print ('sleeping for ',sleep_time, ' seconds')
     time.sleep(sleep_time)
 
 def get_er_within3():
@@ -48,7 +49,7 @@ def get_er_within3():
     function will return a data frame which contains earnings report information
     for companies within 3 days of the current date
     '''
-    
+    print ("Fetching tickers that have an ER within 3 days of current date")
     current_date = datetime.date.today()
     start_range = current_date + datetime.timedelta(days=-3) # date 3 days before current day
     end_range = current_date + datetime.timedelta(days=3) # date 3 days after current day
@@ -64,7 +65,7 @@ def get_er_within3():
         else:
             am_or_pm.append('PM')
     df['am_pm'] = am_or_pm  
-
+    print ("Tickers Retrieved")
     return df
 
 def get_er_tickers(df):
@@ -86,9 +87,11 @@ def mkdirs(tickers):
 
 
 def iter1():
+    iter_1_start_time = time.time()
     # save data frame with er data for that day
+    print ('Performing Iteration #1')
     er_data = get_er_within3()
-    er_data.to_csv(f'D:\IvCrushData\ER_Daily_Data\{get_current_date()} report')
+    er_data.to_csv(f'D:\IvCrushData\ER_Daily_Data\{get_current_date()} report.csv')
 
     # collect option data 5 times a day, equal time intervals
     # datetime.datetime.now() returns the time in CST 
@@ -97,6 +100,7 @@ def iter1():
     # start collection at 9 AM, collect option data every 80 minutes until 2:30 pm
 
     # separate liquid tickers from illiquid 
+    print ("Creating New Data Frames")
     temp_symbols = get_er_tickers(er_data)
     symbols = []
     excluded = []
@@ -110,6 +114,7 @@ def iter1():
                 excluded.append(ticker)
         except:
             print (f'problem with {ticker}')
+    
 
     # get a list of new tickers (no data collected yet)
     new_tickers = []
@@ -122,12 +127,13 @@ def iter1():
 
 
     # write list of tickers to report file
-    reportf = open(f"D:\IvCrushData\Reports\ report_{get_current_date()}.txt",'w+')
+    reportf = open(f"D:\IvCrushData\Reports\ report_{get_current_date()}.txt",'a')
     reportf.write(f'Tickers Included: \n{symbols}')
     reportf.write(f'\n\nTickers Excluded: \n{excluded}')
     reportf.write(f'\n\nNew Tickers: \n{new_tickers}')
     reportf.close()
 
+    current_date = get_current_date()
     # initial iteration
     # --------------------------- factor in for already existing data frame
     # --------------------------- also, if there is an error with api, sleep for longer
@@ -150,8 +156,18 @@ def iter1():
             for strike in list(chain['putExpDateMap'][exp_date].keys()):
                 put = list(chain['putExpDateMap'][exp_date][strike][0].values())
                 df.loc[len(df)] = put 
+        iter_num = []
+        for i in range(len(df)):
+            iter_num.append(1)
+        df['iter_num'] = iter_num 
+        current_dates = []
+        for i in range(len(df)):
+            current_dates.append(current_date)
+        df['current_date'] = current_dates
         df.to_csv(f'D:\IvCrushData\Options Data\{ticker}_chain.csv')
-    
+        
+    print ("New Data Frame Creation Complete")
+    print ("Collecting Data For Existing Tickers")
     for ticker in exists_tickers:
         chain = c.get_option_chain(ticker).json()
         time.sleep(0.35)
@@ -161,74 +177,83 @@ def iter1():
             for strike in chain['callExpDateMap'][exp_date]:
                 # set call data to call var
                 call = list(chain['callExpDateMap'][exp_date][strike][0].values())
+                call.append(1)
+                call.append(current_date)
                 # assign last row of data frame to call 
                 df.loc[len(df)] = call 
         # collect put data and save in same data frame
         for exp_date in list(chain['putExpDateMap'].keys()):
             for strike in list(chain['putExpDateMap'][exp_date].keys()):
                 put = list(chain['putExpDateMap'][exp_date][strike][0].values())
+                put.append(1)
+                put.append(current_date)
                 df.loc[len(df)] = put
-        
-        iter_num = []
-        for i in range(len(df)):
-            iter_num.append(1)
-        df['iter_num'] = iter_num 
+
 
         df.to_csv(f'D:\IvCrushData\Options Data\{ticker}_chain.csv')
+    print ("Existing Ticker Collection Complete")
     
     # initial iteration complete, now calculate time until next iteration, repeat 4x
 
-
+    print ("Completed Iteration #1")
+    iter_1_end_time = time.time()
+    iter_1_duration = iter_1_end_time - iter_1_start_time 
+    reportf2 = open(f"D:\IvCrushData\Reports\ report_{get_current_date()}.txt",'a')
+    reportf2.write(f"\n\nIteration #1 Duration = {iter_1_duration}")
+    reportf2.close()
     return symbols 
 
 # make it so iteration num and date collected can be added to data frame 
 def iter_2to5(symbols,iter_num):
+    iter_duration_start = time.time()
+    print (f"Performing Iteration #{iter_num}")
+    current_date = get_current_date()
     for ticker in symbols:
         time.sleep(0.35) # so I don't surpass api call limit
         df = pd.read_csv(f'D:\IvCrushData\Options Data\{ticker}_chain.csv')
+        df.drop('Unnamed: 0',inplace=True,axis=1)
         chain = c.get_option_chain(ticker).json()
         for exp_date in chain['callExpDateMap']:
-            temp_date = exp_date.split(':')[0]
             for strike in chain['callExpDateMap'][exp_date]:
                 # set call data to call var
                 call = list(chain['callExpDateMap'][exp_date][strike][0].values())
+                call.append(iter_num)
+                call.append(current_date)
                 # assign last row of data frame to call 
                 df.loc[len(df)] = call 
         # collect put data and save in same data frame
         for exp_date in list(chain['putExpDateMap'].keys()):
             for strike in list(chain['putExpDateMap'][exp_date].keys()):
                 put = list(chain['putExpDateMap'][exp_date][strike][0].values())
+                put.append(iter_num)
+                put.append(current_date)
                 df.loc[len(df)] = put
         # create an extra column for the iteration that data was collected for 
-        iter_nums = []
-        for i in range(len(df)):
-            iter_nums.append(iter_num)
-        df['iter_num'] = iter_nums
+
 
         df.to_csv(f'D:\IvCrushData\Options Data\{ticker}_chain.csv')
+    print (f"Completed Iteration #{iter_num}")
+    iter_duration = time.time() - iter_duration_start
+    reportf2 = open(f"D:\IvCrushData\Reports\ report_{get_current_date()}.txt",'a')
+    reportf2.write(f'iteration #{iter_num} duration = {iter_duration}')
+    reportf2.close()
 
-def add_date_column(symbols):
-    for ticker in symbols:
-        df = pd.read_csv(f'D:\IvCrushData\Options Data\{ticker}_chain.csv')
-        current_date = get_current_date()
-        dates = []
-        for i in range(len(df)):
-            dates.append(current_date)
-        df['collected_on'] = dates 
-        df.to_csv(f'D:\IvCrushData\Options Data\{ticker}_chain.csv')
+
 
 def get_stats(symbols):
+    print ("Collecting Stats")
     for ticker in symbols:
         stats = si.get_stats(ticker)
         stats.to_csv(f'D:\IvCrushData\Stats\{ticker}_stats_{get_current_date()}.csv')
+    print ("Stats Collection Complete")
 
 
 # collect data at:
-# 9:00 am
-# 10:20 am
-# 11:40 am
-# 1:00 pm
-# 2:25 pm (get stats too)
+# 9:00 am - iter 1
+# 10:20 am - iter 2
+# 11:40 am - iter 3
+# 1:00 pm - iter 4
+# 2:25 pm (get stats too) - iter 5
 
 
 
@@ -242,10 +267,4 @@ sleep_until('13:00')
 iter_2to5(symbols,4)
 sleep_until('14:25')
 iter_2to5(symbols,5)
-add_date_column(symbols)
 get_stats(symbols)
-
-
-        
-
-
