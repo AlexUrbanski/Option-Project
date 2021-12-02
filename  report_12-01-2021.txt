@@ -1,0 +1,17 @@
+Tickers Included: 
+['ARCE', 'GBDC', 'FRO', 'SNEX', 'NVGS', 'LIZI', 'AMBA', 'ARCE', 'ICLK', 'BIRD', 'BQ', 'BNS', 'BOX', 'RDHL', 'BNED', 'BZUN', 'CTRN', 'HPE', 'JKS', 'CHS', 'EMKR', 'SDIG', 'TIGR', 'TIGR', 'MOMO', 'GFS', 'MOMO', 'GLBS', 'SNEX', 'NVGS', 'LIZI', 'NTAP', 'ZS', 'CRM', 'AMBA', 'ICLK', 'BNS', 'BOX', 'BZUN', 'BNED', 'JKS', 'HPE', 'CTRN', 'CHS', 'EMKR', 'GLBS', 'NTAP', 'CRM', 'ZS', 'JOBS', 'BBW', 'CDMO', 'AZRE', 'GIII', 'KYN', 'HOLI', 'HOLI', 'DOOO', 'RY', 'FIVE', 'STZ', 'BYSI', 'CULP', 'REDU', 'CRON', 'CYD', 'SMTC', 'PDCO', 'PVH', 'CRWD', 'DCI', 'DSGX', 'DAKT', 'DXPE', 'TNP', 'EDU', 'ESTC', 'TAL', 'TAL', 'KFY', 'TCOM', 'GOTU', 'JP', 'NM', 'ZUO', 'SPLK', 'SNPS', 'RAVN', 'OKTA', 'VEEV', 'NCNO', 'NEW', 'ASAN', 'ULTA', 'OLLI', 'SWBI', 'CM', 'TD', 'DG', 'KR', 'COO', 'DOMO', 'DOCU', 'EXPR', 'MEI', 'EH', 'GMS', 'GWRE', 'ZUMZ', 'VERU', 'KIRK', 'SMAR', 'YEXT', 'TLYS', 'OOMA', 'VRNT', 'SIG', 'BIG', 'BMO', 'DSL', 'HUGE', 'GCO', 'HIBB']
+
+Tickers Excluded: 
+['BBKCF', 'SMEBF', 'LEXX', 'MCLDF', 'YJ', 'QH', 'ALXXF', 'ADBRF', 'ARTL', 'AAMMF', 'AIP', 'BILZF', 'BZQIF', 'BFRI', 'SRHIF', 'INEOF', 'POPRF', 'JRJC', 'SPOFF', 'DPXCF', 'MGLQF', 'CSTXF', 'FLOOF', 'EM', 'SFET', 'UCL', 'GTH', 'LNLHF', 'HBORF', 'YOOIF', 'YJ', 'TLTFF', 'WDH', 'PRSNF', 'INFA', 'RDDTF', 'RVVTF', 'RROYF', 'QH', 'BOSC', 'CNTMF', 'WILC', 'NXGWF', 'GTH', 'TGIFF', 'KRKR', 'REX', 'BASXQ', 'BOMH', 'BKRRF', 'BOMH', 'NTIOF', 'SQBGQ', 'BIMI', 'TY', 'FEDU', 'FEDU', 'FFHL', 'NFH', 'NFH', 'NFH', 'ELLO', 'CANQF', 'NETI', 'EXCOF', 'KEGX', 'ONE', 'HLG', 'SFUN', 'SFUN', 'SFUN', 'HUIZ', 'STMH', 'RIGMF', 'VLGEA', 'LAIX', 'MOGU', 'PRSNF', 'TCYSF', 'OBNNF', 'IWSY', 'LITB', 'LEE', 'MULN', 'NOBDF', 'CBWBF', 'CCM', 'HSCHF', 'HSCHF', 'HSCHF', 'HSCHF']
+
+New Tickers: 
+['BIRD', 'SDIG', 'BYSI', 'CRON']
+
+Iteration #1 Duration = 1339.571208000183
+iteration #2 duration = 1106.538732767105
+
+iteration #3 duration = 1178.5276832580566
+
+iteration #4 duration = 1284.719097852707
+
+iteration #5 duration = 1343.7196695804596
