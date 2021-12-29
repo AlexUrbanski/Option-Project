@@ -1,0 +1,677 @@
+import pandas as pd 
+import numpy as np 
+import matplotlib.pyplot as plt 
+import os, time, datetime 
+import yahoo_fin.stock_info as si 
+
+class Chain:
+
+    def __init__(self,ticker,revised):
+        self.ticker = ticker
+        if revised: 
+            df = pd.read_csv(f"D:\IvCrushData\Revised_Chains\{self.ticker}_rchain.csv")
+        else:
+            df = pd.read_csv(f"D:\IvCrushData\Options Data\{self.ticker}_chain.csv")
+        if "Unnamed: 0" in df:
+            df.drop('Unnamed: 0',inplace=True,axis=1)
+        self.df = df 
+
+
+    def get_call(self, strike, exp_date):
+        '''
+        strike format example: 700
+        exp_date format: month-day-2 digit year (e.g. 12-17-21)
+        example: get_call(500,11-10-21) is the 500 strike November 10 2021 experation date
+        '''
+        exp_date_arr = exp_date.split('-')
+        exp_str = self.ticker + "_" + exp_date_arr[0] + exp_date_arr[1] + exp_date_arr[2] + "C" + str(strike)
+        call_df = self.df[(self.df['symbol'] == exp_str)] # new data frame containing the info for the singular call option
+        return call_df
+    
+    def get_exp_dates_strikes(self):
+        '''
+        returns a list of lists with the format: [month,day,year,type,strike]
+        '''
+        all = []
+        for i in self.df[(self.df['iter_num']==1)]['symbol'].unique():
+ 
+            arr = i.split('_')
+            info = arr[1] # contains exp info and strike
+            month = info[0:2]
+            day = info[2:4]
+            year = info[4:6]
+            type = info[6:7]
+            strike = info[7:]
+            temp = [month,day,year,type,strike]
+            all.append(temp)
+        return all 
+    
+    def get_start_end_date(self):
+        temp = list(self.df['current_date'].unique())
+        return [temp[0],temp[len(temp)-1]] 
+    
+    def unique_exp_dates(self):
+        exp_info = self.get_exp_dates_strikes()
+        
+
+
+
+class ER_HISTORY():
+
+    def __init__(self):
+        self.df = pd.read_csv('D:\IvCrushData\ER_HISTORY.csv')
+        if "Unnamed: 0" in self.df:
+            self.df.drop('Unnamed: 0',inplace=True,axis=1) 
+    
+    def return_df(self):
+        return self.df
+    
+    def get_company_name(self,tick):
+        return list(self.df[self.df['ticker'] == tick]['companyshortname'])[0]
+    
+    def get_ampm(self,tick):
+        return list(self.df[self.df['ticker'] == tick]['am_pm'])[0]
+    
+    def get_eps_est(self,tick):
+        return list(self.df[self.df['ticker'] == tick]['epsestimate'])[0]
+    
+    def get_eps_act(self,tick):
+        return list(self.df[self.df['ticker'] == tick]['epsactual'])[0]
+    
+    def get_eps_suppct(self,tick):
+        return list(self.df[self.df['ticker'] == tick]['epssurprisepct'])[0]
+
+    def get_date(self,tick):
+        er_date = list(self.df[self.df['ticker']==tick]['startdatetime'])[0].split('T')[0]
+        er_date = er_date.split('-')
+        er_date = er_date[1] + '-' + er_date[2] + '-' + er_date[0]
+        return er_date 
+
+class SPRICE_HISTORY(ER_HISTORY):
+
+    def __init__(self,tick):
+        self.tick = tick 
+        self.df = pd.read_csv(f'D:\IvCrushData\SP_HISTORY\{self.tick}_sprice_log.csv')
+
+    def get_avg_sprice(self,start,end):
+        # reformat start and end dates 
+        start = start.split('-')
+        start = start[2] + '-' + start[0] + '-' + start[1]
+        end = end.split('-')
+        end = end[2] + '-' + end[0] + '-' + end[1]
+
+
+        date_list = list(self.df['date'])
+        dates = []
+        for i in date_list:
+            d = i.split(' ')[0]
+            dates.append(d)
+        
+        # get start index pos
+        start_pos = 0
+        while True:
+            for d in range(len(dates)):
+                if dates[d] == start:
+                    start_pos = d 
+                    break
+            break 
+        # get end index pos 
+        end_pos = 0 
+        ld = len(dates)
+        while True: 
+            for d in range(1,len(dates)):
+                if dates[ld - d] == end:
+                    end_pos = ld - d 
+                    break 
+            break 
+        prices = list(self.df.loc[start_pos:end_pos]['close']) 
+        avg = sum(prices) / len(prices)
+        return avg 
+        
+    
+    def plot_sprice(self,start,end,show=False,save=False,filename=""):
+        
+
+        # reformat start and end dates 
+        start = start.split('-')
+        start = start[2] + '-' + start[0] + '-' + start[1]
+
+        end = end.split('-')
+        end = end[2] + '-' + end[0] + '-' + end[1]
+
+
+        date_list = list(self.df['date'])
+        dates = []
+        for i in date_list:
+            d = i.split(' ')[0]
+            dates.append(d)
+        
+        # get start index pos
+        start_pos = 0
+        while True:
+            for d in range(len(dates)):
+                if dates[d] == start:
+                    start_pos = d 
+                    break
+            break 
+        # get end index pos 
+        end_pos = 0 
+        ld = len(dates)
+        while True: 
+            for d in range(1,len(dates)):
+                if dates[ld - d] == end:
+                    end_pos = ld - d 
+                    break 
+            break 
+        
+        # get er pos
+        er_pos = 0 
+        dates = list(self.df.loc[start_pos:end_pos]['date']) 
+        ndates = []
+        for i in dates:
+            d = i.split(' ')[0]
+            ndates.append(d)
+        er_date = ER_HISTORY().get_date(self.tick)
+        er_date = er_date.split('-')
+        er_date = er_date[2] + '-' + er_date[0] + '-' + er_date[1] 
+        while True:
+            for d in range(len(ndates)-1):
+                if ndates[d] == er_date:
+                    er_pos = d 
+                    break 
+            break 
+
+
+        prices = list(self.df.loc[start_pos:end_pos]['close']) 
+        er_vline = er_pos -1
+        # plot
+        x_axes = []
+        for i in range(len(prices)):
+            x_axes.append(i)
+        fig, graph = plt.subplots()
+        graph.plot(x_axes,prices,color="black",lw=2,linestyle='-',marker='o',markersize=3.5,markerfacecolor="yellow")
+        plt.xlabel('Time')
+        plt.ylabel('Stock Price')
+        title_string = f"{self.tick} PRICE HISTORY over {start} to {end} freq=15 min"
+        plt.axvline(x=er_vline) 
+        
+        if show:
+            plt.show()
+        
+        if save:
+            fig.savefig(filename)
+
+
+
+
+        return 0 
+
+class Call(ER_HISTORY):
+
+    # example input: Call("CRWD",strike=200,exp_date="12-17-21")
+
+    def __init__(self,ticker,strike,exp_date):
+        self.ticker = ticker
+        self.strike = strike 
+        self.exp_date = exp_date
+        df = pd.read_csv(f"D:\IvCrushData\Options Data\{self.ticker}_chain.csv")
+        if "Unnamed: 0" in df:
+            df.drop('Unnamed: 0',inplace=True,axis=1)
+        
+        exp_date_arr = self.exp_date.split('-')
+        exp_str = self.ticker + "_" + exp_date_arr[0] + exp_date_arr[1] + exp_date_arr[2] + "C" + str(self.strike)
+        self.call_df = df[(df['symbol'] == exp_str)] # new data frame containing each instance of the exact call option 
+        self.call_df.reset_index(inplace=True)
+        self.call_df.drop('index',axis=1,inplace=True)
+        # clean data 
+        itnums = list(self.call_df['iter_num']) 
+        messed_up_indexs = [] # list that contains all indexes in which there is a duplicate 
+        for i in range(len(itnums)-1):
+            if itnums[i] == itnums[i+1]:
+                messed_up_indexs.append(i)
+        self.call_df.drop(messed_up_indexs,axis=0,inplace=True) 
+
+        self.er_df = ER_HISTORY().return_df()
+    
+    def display(self):
+        print (self.call_df)
+        return self.call_df 
+    
+    def call_to_csv(self):
+        self.call_df.to_csv(f'D:\IvCrushData\Temp\{self.ticker}_{self.strike}_{self.exp_date}_temp_chain.csv',index=False)
+    
+    # get various option stats
+    def get_mid(self):
+        bids = list(self.call_df['bid'])
+        asks = list(self.call_df['ask'])
+        mids = []
+        for i in range(0,len(bids)):
+            mid = (bids[i] + asks[i])/2
+            mids.append(mid)
+        return mids 
+    
+    def clean_data(self):
+        itnums = list(self.call_df['iter_num']) 
+        messed_up_indexs = [] # list that contains all indexes in which there is a duplicate 
+        for i in range(len(itnums)-1):
+            if itnums[i] == itnums[i+1]:
+                messed_up_indexs.append(i)
+        self.call_df.drop(messed_up_indexs,axis=0,inplace=True) 
+    
+    def get_iv(self):
+        ivs = list(self.call_df['volatility'])
+        return ivs 
+
+    
+    def plot_price(self):
+        mid_arr = np.array(self.get_mid()) # array containing the mid price of all the call options (y-axis)
+        
+        itnum = list(self.call_df['iter_num'])
+        itervals = []
+        x = 0
+        for i in range(0,len(itnum)):
+            iterval = itnum[i] + 5*x
+            itervals.append(iterval)
+            if (i+1)%5 == 0:
+                x +=1 
+        y_axis = mid_arr 
+        x_axis = np.array(itervals)
+        plt.plot(x_axis,y_axis,'r')
+        plt.xlabel('Time')
+        plt.ylabel('Option Price')
+        title_string = f"{self.ticker}, exp={self.exp_date}, {self.strike}C"
+        plt.title(title_string) 
+        plt.axvline(x=20)
+        plt.show()
+    
+    def get_greeks(self):
+        deltas = list(self.call_df['delta']) 
+        gammas = list(self.call_df['gamma']) 
+        thetas = list(self.call_df['theta'])
+        vegas = list(self.call_df['vega'])
+         
+        dic = {'Deltas': deltas, 'Thetas' : thetas, 'Gammas': gammas, 'Vegas': vegas}  
+        return dic 
+
+    def plot(self,save,show,filename,with_iv):
+        mid_arr = np.array(self.get_mid()) # array containing the mid price of all the call options (y-axis)
+        
+        itnum = list(self.call_df['iter_num'])
+        itervals = []
+        x = 0
+        for i in range(0,len(itnum)):
+            iterval = itnum[i] + 5*x
+            itervals.append(iterval)
+            if (i+1)%5 == 0:
+                x +=1 
+        y_axis = mid_arr 
+        x_axis = np.array(itervals)
+
+        # figure out when earnings is
+        er_date = list(self.er_df[self.er_df['ticker']==self.ticker]['startdatetime'])[0].split('T')[0]
+        collection_dates = self.call_df['current_date'].unique()
+        er_date = er_date.split('-')
+        er_date = er_date[1] + '-' + er_date[2] + '-' + er_date[0]
+        index = 0
+        for i in range(len(collection_dates)):
+            if collection_dates[i] == er_date:
+                index = i
+            i+=1
+        # find whether it was am or pm 
+        am_pm = list(self.er_df[self.er_df['ticker']==self.ticker]['am_pm'])[0]
+        if am_pm.upper() == 'AM':
+            er_vline = 5*index
+        else:
+            er_vline = 5*index + 5
+    
+
+
+        # graph 
+        fig, graph = plt.subplots(1,2) 
+        graph[0].plot(x_axis,y_axis,color="purple",lw=3,linestyle='-',marker='o',markersize=4.5,markerfacecolor="red") 
+        graph[0].set_xlabel('Time')
+        graph[0].set_ylabel('Option Price')
+        title_string = f"{self.ticker}, exp={self.exp_date}, {self.strike}C"
+        graph[0].set_title(title_string)
+        y_min, y_max = graph[0].get_ylim()
+        x_min, x_max = graph[0].get_xlim()
+        graph[0].plot([er_vline,er_vline],[y_min,y_max])
+
+        # plot vertical line
+        
+
+        #file_end = f"{self.ticker} exp={self.exp_date} {self.strike}C.jpeg"
+        if with_iv:
+            ivs = self.get_iv() 
+            graph[1].plot(x_axis,ivs,color = "red",lw=1.5,linestyle='-',marker='o',markersize=2,markerfacecolor="black") 
+            graph[1].set_xlabel('Time')
+            
+            graph[1].set_title('IMPLIED VOLATILITY') 
+        plt.axvline(x=er_vline) 
+        if show:
+            plt.show()
+        if save:
+            if not os.path.exists(f'D:\IvCrushData\Analysis\{self.ticker}'):
+                os.mkdir(f'D:\IvCrushData\Analysis\{self.ticker}')
+            if not os.path.exists(f'D:\IvCrushData\Analysis\{self.ticker}\Plots'):
+                os.mkdir(f'D:\IvCrushData\Analysis\{self.ticker}\Plots')
+            fig.savefig(filename) 
+
+
+class Put(ER_HISTORY):
+
+    # example input: Call("CRWD",strike=200,exp_date="12-17-21")
+
+    def __init__(self,ticker,strike,exp_date):
+        self.ticker = ticker
+        self.strike = strike 
+        self.exp_date = exp_date
+        df = pd.read_csv(f"D:\IvCrushData\Options Data\{self.ticker}_chain.csv")
+        if "Unnamed: 0" in df:
+            df.drop('Unnamed: 0',inplace=True,axis=1)
+        
+        exp_date_arr = self.exp_date.split('-')
+        exp_str = self.ticker + "_" + exp_date_arr[0] + exp_date_arr[1] + exp_date_arr[2] + "P" + str(self.strike)
+        self.put_df = df[(df['symbol'] == exp_str)] # new data frame containing each instance of the exact call option 
+        self.put_df.reset_index(inplace=True)
+        self.put_df.drop('index',axis=1,inplace=True)
+        # clean data 
+        itnums = list(self.put_df['iter_num']) 
+        messed_up_indexs = [] # list that contains all indexes in which there is a duplicate 
+        for i in range(len(itnums)-1):
+            if itnums[i] == itnums[i+1]:
+                messed_up_indexs.append(i)
+        self.put_df.drop(messed_up_indexs,axis=0,inplace=True) 
+
+        self.er_df = ER_HISTORY().return_df()
+    
+    def display(self):
+        print (self.put_df)
+        return self.put_df 
+    
+    def call_to_csv(self):
+        self.put_df.to_csv(f'D:\IvCrushData\Temp\{self.ticker}_{self.strike}_{self.exp_date}_temp_chain.csv',index=False)
+    
+    # get various option stats
+    def get_mid(self):
+        bids = list(self.put_df['bid'])
+        asks = list(self.put_df['ask'])
+        mids = []
+        for i in range(0,len(bids)):
+            mid = (bids[i] + asks[i])/2
+            mids.append(mid)
+        return mids 
+    
+    def clean_data(self):
+        itnums = list(self.put_df['iter_num']) 
+        messed_up_indexs = [] # list that contains all indexes in which there is a duplicate 
+        for i in range(len(itnums)-1):
+            if itnums[i] == itnums[i+1]:
+                messed_up_indexs.append(i)
+        self.put_df.drop(messed_up_indexs,axis=0,inplace=True) 
+
+    
+    def plot_price(self):
+        mid_arr = np.array(self.get_mid()) # array containing the mid price of all the call options (y-axis)
+        
+        itnum = list(self.put_df['iter_num'])
+        itervals = []
+        x = 0
+        for i in range(0,len(itnum)):
+            iterval = itnum[i] + 5*x
+            itervals.append(iterval)
+            if (i+1)%5 == 0:
+                x +=1 
+        y_axis = mid_arr 
+        x_axis = np.array(itervals)
+        plt.plot(x_axis,y_axis,'r')
+        plt.xlabel('Time')
+        plt.ylabel('Option Price')
+        title_string = f"{self.ticker}, exp={self.exp_date}, {self.strike}P"
+        plt.title(title_string) 
+        plt.axvline(x=20)
+        plt.show()
+    
+    def plot(self,save,show,with_iv):
+        mid_arr = np.array(self.get_mid()) # array containing the mid price of all the call options (y-axis)
+        
+        itnum = list(self.put_df['iter_num'])
+        itervals = []
+        x = 0
+        for i in range(0,len(itnum)):
+            iterval = itnum[i] + 5*x
+            itervals.append(iterval)
+            if (i+1)%5 == 0:
+                x +=1 
+        y_axis = mid_arr 
+        x_axis = np.array(itervals)
+
+        # figure out when earnings is
+        er_date = list(self.er_df[self.er_df['ticker']==self.ticker]['startdatetime'])[0].split('T')[0]
+        collection_dates = self.put_df['current_date'].unique()
+        er_date = er_date.split('-')
+        er_date = er_date[1] + '-' + er_date[2] + '-' + er_date[0]
+        index = 0
+        for i in range(len(collection_dates)):
+            if collection_dates[i] == er_date:
+                index = i
+            i+=1
+        # find whether it was am or pm 
+        am_pm = list(self.er_df[self.er_df['ticker']==self.ticker]['am_pm'])[0]
+        if am_pm.upper() == 'AM':
+            er_vline = 5*index
+        else:
+            er_vline = 5*index + 5
+    
+
+
+        # graph 
+        fig, graph = plt.subplots()
+        graph.plot(x_axis,y_axis,color="purple",lw=3,linestyle='-',marker='o',markersize=4.5,markerfacecolor="red") 
+        plt.xlabel('Time')
+        plt.ylabel('Option Price')
+        title_string = f"{self.ticker}, exp={self.exp_date}, {self.strike}C"
+        plt.title(title_string)
+        plt.axvline(x=er_vline)
+
+        if with_iv:
+            ivs = self.get_iv() 
+            graph.plot(x_axis,ivs,color = "red",lw=1.5,linestyle='-',marker='o',markersize=2,markerfacecolor="black") 
+
+        if show:
+            plt.show()
+        if save:
+            if not os.path.exists(f'D:\IvCrushData\Plots\{self.ticker}'):
+                os.mkdir(f'D:\IvCrushData\Plots\{self.ticker}')
+            fig.savefig(f'D:\IvCrushData\Plots\{self.ticker}{title_string}.jpeg')      
+
+        
+            
+
+
+    def get_iv(self):
+        ivs = list(self.call_df['volatility'])
+        return ivs 
+    def get_vega(self):
+        vegas = list(self.call_df['vega'])
+        return vegas 
+
+    def revise_chain(self):
+        # drop all unnecessary columns to make viewing the chain easier
+        self.call_df.drop( "tradeTimeInLong" ,axis=1,inplace=True)
+        self.call_df.drop( "lastSize" ,axis=1,inplace=True)
+        self.call_df.drop( "tradeDate" ,axis=1,inplace=True)
+        self.call_df.drop( "quoteTimeInLong" ,axis=1,inplace=True)
+        self.call_df.drop( "netChange" ,axis=1,inplace=True)
+        #self.call_df.drop( "closePrice" ,axis=1,inplace=True)
+        self.call_df.drop( "bidAskSize" ,axis=1,inplace=True)
+        self.call_df.drop( "bidSize" ,axis=1,inplace=True)
+        self.call_df.drop( "askSize" ,axis=1,inplace=True)
+        self.call_df.drop( "highPrice" ,axis=1,inplace=True)
+        self.call_df.drop( "lowPrice" ,axis=1,inplace=True)
+        self.call_df.drop( "openPrice" ,axis=1,inplace=True)
+        self.call_df.drop( "closePrice" ,axis=1,inplace=True)
+        #self.call_df.drop( "exchange" ,axis=1,inplace=True)
+        self.call_df.drop( "description" ,axis=1,inplace=True)
+        self.call_df.drop( "timeValue" ,axis=1,inplace=True)
+        self.call_df.drop( "theoreticalOptionValue" ,axis=1,inplace=True)
+        self.call_df.drop( "theoreticalVolatility" ,axis=1,inplace=True)
+        self.call_df.drop( "optionDeliverablesList" ,axis=1,inplace=True)
+        self.call_df.drop( "expirationDate" ,axis=1,inplace=True)
+        self.call_df.drop( "daysToExpiration" ,axis=1,inplace=True)
+        self.call_df.drop( "expirationType" ,axis=1,inplace=True)
+        self.call_df.drop( "lastTradingDay" ,axis=1,inplace=True)
+        self.call_df.drop( "multiplier" ,axis=1,inplace=True)
+        self.call_df.drop( "settlementType" ,axis=1,inplace=True)
+        self.call_df.drop( "deliverableNote" ,axis=1,inplace=True)
+        self.call_df.drop( "isIndexOption" ,axis=1,inplace=True)
+        self.call_df.drop( "percentChange" ,axis=1,inplace=True)
+        self.call_df.drop( "markChange" ,axis=1,inplace=True)
+        self.call_df.drop( "markPercentChange" ,axis=1,inplace=True)
+        self.call_df.drop( "intrinsicValue" ,axis=1,inplace=True)
+        self.call_df.drop( "mini" ,axis=1,inplace=True)
+        self.call_df.drop( "inTheMoney" ,axis=1,inplace=True)
+        self.call_df.drop( "nonStandard" ,axis=1,inplace=True)
+        self.call_df.drop( "pennyPilot" ,axis=1,inplace=True)
+
+        
+
+
+
+
+
+
+
+def get_current_date():
+    # returns the current date in '10-12-2021' format
+    current_date = str(datetime.datetime.now()).split(' ')[0]
+    current_date = current_date.split('-')
+    current_date = current_date[1] + '-' + current_date[2] + '-' + current_date[0]
+    return current_date
+
+def get_all_complete_tickers():
+        # function that returns a list of tickers in which a complete data collection cycle has occured 
+        file_names = os.listdir('D:\IvCrushData\Options Data')
+        symbols = [] 
+
+        recent_epoch = os.path.getmtime(f'D:\IvCrushData\Reports\ report_{get_current_date()}.txt') # time since epoch of report file
+        
+        for filename in file_names:
+            time_last_accessed = os.path.getmtime(f'D:\IvCrushData\Options Data\{filename}')
+            if time_last_accessed < recent_epoch - 10000: # if the file has been modified on the most recent collection date
+                tick = filename.split('_')[0]
+                symbols.append(tick)
+        print ('Completed ticker quant = ', len(symbols))
+        return symbols 
+
+
+def get_days_collected(symbols):
+    # returns a dictionary containging {ticker: amount of days the option chain was collected for}
+    dic = {}
+    for ticker in symbols:
+        df = pd.read_csv(f'D:\IvCrushData\Options Data\{ticker}_chain.csv')
+        if "Unnamed: 0" in df:
+            df.drop('Unnamed: 0',inplace=True,axis=1)
+        days = df['current_date'].nunique()
+        dic[ticker] = days 
+    return dic 
+
+def filter_tickers_by_days_collected(symb_dic):
+    # takes in a dictionary with all the symbols and the amount of days the option chain data was collected for 
+    final_dic = {}
+    for tick in symb_dic:
+        if symb_dic[tick] > 3:
+            final_dic[tick] = symb_dic[tick]
+    return final_dic 
+
+
+def drop_low_liq(symbols):
+    # saves all revised data frames
+    for i in range(len(symbols)):
+        if not os.path.exists(f'D:\IvCrushData\Revised_Chains\{symbols[i]}_rchain.csv'):
+            df = pd.read_csv(f'D:\IvCrushData\Options Data\{symbols[i]}_chain.csv') 
+            for row in range(0,len(df)):
+                if df['openInterest'][row] < 500:
+                    df.drop(row,inplace=True,axis=0) # drop all options with an open interest of less than 500 
+            if len(df) < 400:
+                print ('low liq ', symbols[i])
+            else:
+                df.to_csv(f'D:\IvCrushData\Revised_Chains\{symbols[i]}_rchain.csv')
+                print ('saving', symbols[i])
+        else:
+            print ("ALREADY EXISTS: ",symbols[i])
+
+        
+    
+
+def get_list_from_folder(folder_path):
+    filenames = os.listdir(folder_path)
+    symbols = []
+    for file in filenames:
+        symbols.append(file.split('_')[0])
+    return symbols 
+
+def create_revised_dfs():
+    complete_symbs = get_all_complete_tickers()
+    print ("got complete tickers")
+    symb_dic = get_days_collected(complete_symbs) 
+    print ("SYMB DIC")
+    print (symb_dic)
+    filt_symbs = filter_tickers_by_days_collected(symb_dic)
+    print ('FILTERED SYMBOLS')
+    print (filt_symbs)
+    symbols = list(filt_symbs.keys())
+    print ('FINAL SYMBOLS LIST: ')
+    print (symbols)
+    drop_low_liq(symbols)
+    print ('COMPLETE!!') 
+
+
+def f1():
+    # example input: Call("CRWD",strike=200,exp_date="12-17-21")
+    filenames = os.listdir('D:\IvCrushData\Revised_Chains')
+    symbols = []
+    for file in filenames:
+        symbols.append(file.split('_')[0])
+    # symbols now contains all the tickers that will be analyzed 
+    for tick in symbols[0:1]: 
+        # make chain object and get all experation dates and strikes
+        chain = Chain(tick)
+        exps_strikes = chain.get_exp_dates_strikes()
+        for item in exps_strikes:
+            if item[3] == 'P':
+                temp_ex = item[0] + '-' + item[1] + '-' + item[2]
+                try:
+                    s = int(item[4])
+                except:
+                    s = float(item[4])
+                p = Put(tick,strike=s,exp_date=temp_ex)
+                p.plot(save=True,show=False)
+            else:
+                temp_ex = item[0] + '-' + item[1] + '-' + item[2]
+                try:
+                    s = int(item[4])
+                except:
+                    s = float(item[4])
+                c = Call(tick,strike=s,exp_date=temp_ex)
+                c.plot(save=True,show=False)
+
+
+#chain = Chain('BBW')
+#exp_info = chain.get_exp_dates_strikes()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
